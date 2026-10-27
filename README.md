@@ -17,10 +17,13 @@ Render builds Node, Python, and the pinned Vibe-Trading dependencies automatical
 ## What works immediately
 
 - Generated demo candles and OHLC CSV imports; demo data is labeled.
+- **Load market candles** fetches a snapshot of Bitcoin/USD or Ethereum/USD from Kraken's public API, without an API key. Choose M5, M15, H1, or H4, then tap the button. The latest 180 available closed candles are scanned automatically. Tap again to refresh; this is not a streaming feed. The chart shows the fetch time and last candle close time. Saved studies retain that provenance.
 - Local pattern analysis and Vibe-Trading RSI, moving averages, MACD, and Bollinger Bands.
 - Chart image annotations, browser history, and exports.
 
-This app does not include a live market-data feed or place trades. It has no built-in subscription plan; hosting and optional AI providers can have their own costs.
+The Kraken endpoint has a 10-second timeout and a 60-second server cache. Provider outages, rate limits, or regional restrictions display an error and keep your existing chart; the app does not substitute demo prices. Forex, gold, and index examples remain demo data unless you import a CSV. It does not place trades. It has no built-in subscription plan; hosting and optional AI providers can have their own costs.
+
+Market adapter and mobile browser checks use explicit test responses. This development environment blocks access to the public market providers, so a live Kraken download still needs verification after deployment. [Kraken OHLC endpoint documentation](https://docs.kraken.com/api/docs/rest-api/get-ohlc-data/).
 
 ## Optional AI setup
 

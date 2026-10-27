@@ -4,15 +4,22 @@ import {readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {analyze,parseCSV,validateBars} from './analysis.mjs';
 import {callVibe} from './vibe.mjs';
+import {createMarketLoader} from './market.mjs';
+const loadMarket = createMarketLoader();
 const files={'/':['index.html','text/html'],'/workspace':['workspace.html','text/html'],'/app.js':['app.js','text/javascript'],'/app.css':['app.css','text/css'],'/vibe-ui.js':['vibe-ui.js','text/javascript'],'/mark.svg':['mark.svg','image/svg+xml']};
 async function readJSON(req,limit){let size=0;const chunks=[];for await(const c of req){size+=c.length;if(size>limit)throw Error('Input is too large.');chunks.push(c)}return JSON.parse(Buffer.concat(chunks).toString())}
-export function createServer({invokeVibe=callVibe}={}){return http.createServer(async(req,res)=>{
+export function createServer({invokeVibe=callVibe,fetchMarket=loadMarket}={}){return http.createServer(async(req,res)=>{
  const json=(status,data)=>{if(res.destroyed)return;res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data))};
  try{
   const path=new URL(req.url,'http://local').pathname;
   // Browser requests must originate from this app, including when hosted publicly.
   if(req.method==='POST'&&req.headers.origin){let same=false;try{same=new URL(req.headers.origin).host===req.headers.host}catch{}if(!same)return json(403,{error:'Cross-site requests are not accepted.'})}
   if(path==='/api/health')return json(200,{ok:true});
+  if(path==='/api/market/candles'&&req.method==='GET'){
+   const params=new URL(req.url,'http://local').searchParams;
+   try{return json(200,await fetchMarket(params.get('symbol')||'BTCUSD',params.get('timeframe')||'M5'))}
+   catch(error){return json(error.status||502,{error:error.message||'Market data is unavailable.'})}
+  }
   if(path==='/api/scan'&&req.method==='POST'){const input=await readJSON(req,1_500_000);const bars=input.csv!==undefined?parseCSV(input.csv):input.bars;return json(200,{...analyze(bars),bars})}
   if(path==='/api/vibe/status'&&req.method==='GET'){const data=await invokeVibe({action:'status'});return json(data.ok?200:data.error?.status||502,data)}
   const action={'/api/vibe/indicators':'indicators','/api/vibe/research':'research','/api/vibe/image':'image'}[path];
