@@ -7,11 +7,15 @@ artifacts = tempfile.TemporaryDirectory(prefix="chartscope-browser-")
 from playwright.sync_api import sync_playwright
 code = '''
 import {createServer} from './server.mjs';
-import {createMarketLoader} from './market.mjs';
+import {createMarketService} from './market.mjs';
 const now=Date.now(), start=Math.floor(now/300000)*300000-180*300000;
 const rows=Array.from({length:181},(_,i)=>[(start+i*300000)/1000,100+i,103+i,99+i,102+i]);
-const fetchMarket=createMarketLoader({now:()=>now,fetchImpl:async()=>({ok:true,json:async()=>({error:[],result:{XXBTZUSD:rows,last:1}})})});
-const server=createServer({fetchMarket,invokeVibe:async()=>({ok:true,result:{installed:true,version:'fixture',configured:false,detail:'Browser test'}})});
+const markets=createMarketService({now:()=>now,fetchImpl:async url=>({ok:true,json:async()=>{
+ if(url.pathname.endsWith('AssetPairs'))return {error:[],result:{SOLUSD:{altname:'SOLUSD',wsname:'SOL/USD',status:'online'},SOLEUR:{altname:'SOLEUR',wsname:'SOL/EUR',status:'online'},SOLUSDT:{altname:'SOLUSDT',wsname:'SOL/USDT',status:'online'},PENNYXBT:{altname:'PENNYXBT',wsname:'PENNY/XBT',status:'online'}}};
+ if(url.hostname.includes('yahoo'))return {chart:{result:[{meta:{symbol:'EURGBP=X',currency:'GBP',instrumentType:'CURRENCY'},timestamp:rows.map((r,i)=>(Math.floor(now/(url.searchParams.get('interval')==='60m'?3600000:300000))*(url.searchParams.get('interval')==='60m'?3600000:300000)-(180-i)*(url.searchParams.get('interval')==='60m'?3600000:300000))/1000),indicators:{quote:[{open:rows.map(()=>.85),high:rows.map(()=>.87),low:rows.map(()=>.84),close:rows.map(()=>.86)}]}}],error:null}};
+ return {error:[],result:{XXBTZUSD:url.searchParams.get('pair')==='PENNYXBT'?rows.map(r=>[r[0],.00000010,.00000012,.00000009,.00000011]):rows,last:1}};
+}})});
+const server=createServer({fetchMarket:markets.load,fetchMarkets:markets.catalog,invokeVibe:async()=>({ok:true,result:{installed:true,version:'fixture',configured:false,detail:'Browser test'}})});
 server.listen(0,'127.0.0.1',()=>console.log(server.address().port));
 '''
 server=subprocess.Popen(['node','--input-type=module','-e',code],cwd=project,stdout=subprocess.PIPE,text=True)
@@ -35,6 +39,41 @@ try:
   assert history[0]['marketData']['provider']=='Kraken'
   assert history[0]['marketData']['fetchedAt']
   page.locator('#exportJSON').click()
+  page.wait_for_function("document.querySelector('#marketPair').querySelector('option[value=\"kraken:SOLUSDT\"]') !== null")
+  page.locator('#marketGroup').select_option('crypto')
+  page.locator('#marketSearch').fill('SOL/USDT')
+  assert page.locator('#marketPair option').count()==1
+  page.locator('#loadMarket').click()
+  page.wait_for_function("window.chartScopeContext.symbol === 'SOLUSDT' && document.querySelector('#scanState').textContent === 'Scan complete'")
+  assert page.locator('#symbol').input_value()=='MARKET'
+  page.locator('#marketSearch').fill('PENNY/BTC')
+  page.locator('#loadMarket').click()
+  page.wait_for_function("window.chartScopeContext.symbol === 'PENNYBTC' && document.querySelector('#scanState').textContent === 'Scan complete'")
+  assert page.locator('#lastClose').inner_text()=='0.00000011'
+  page.locator('#marketGroup').select_option('forex')
+  page.locator('#marketSearch').fill('EUR/GBP')
+  page.locator('#marketPair').select_option('yahoo:EURGBP=X')
+  page.locator('#loadMarket').click()
+  page.wait_for_function("window.chartScopeContext.symbol === 'EURGBP=X' && document.querySelector('#scanState').textContent === 'Scan complete'")
+  assert page.locator('#sourceBadge').inner_text()=='Yahoo Finance candles'
+  assert page.evaluate('window.chartScopeContext.bars[0].open')==.85
+  assert 'May be delayed' in page.locator('#notice').inner_text()
+  assert 'Yahoo Finance' in page.locator('#researchSource').inner_text()
+  page.locator('[data-tf=H4]').click()
+  page.wait_for_function("window.chartScopeContext.timeframe === 'H4' && document.querySelector('#scanState').textContent === 'Scan complete'")
+  assert page.evaluate('window.chartScopeContext.source')=='market'
+  page.locator('[data-tf=M5]').click()
+  page.wait_for_function("window.chartScopeContext.timeframe === 'M5' && document.querySelector('#scanState').textContent === 'Scan complete'")
+  page.locator('summary').filter(has_text='Enter another provider symbol').click()
+  page.locator('#customSymbol').fill('GC=F')
+  page.locator('#loadCustomMarket').click()
+  page.wait_for_function("window.chartScopeContext.symbol === 'GC=F' && document.querySelector('#scanState').textContent === 'Scan complete'")
+  assert 'Gold futures' in page.locator('#chartTitle').inner_text()
+  assert page.evaluate('window.chartScopeContext.marketData.provider')=='Yahoo Finance'
+  page.locator('#marketGroup').select_option('all')
+  page.locator('#marketSearch').fill('BTC/USD')
+  page.locator('#loadMarket').click()
+  page.wait_for_function("window.chartScopeContext.symbol === 'BTCUSD' && document.querySelector('#scanState').textContent === 'Scan complete'")
   page.route('**/api/market/candles*',lambda route:route.fulfill(status=502,content_type='application/json',body=json.dumps({'error':'Provider unavailable (test)'})))
   page.locator('#loadMarket').click()
   page.wait_for_function("document.querySelector('#toast').textContent.includes('Provider unavailable')")
@@ -80,6 +119,6 @@ try:
   assert not errors, errors
   page.screenshot(path=str(Path(artifacts.name)/'mobile.png'),full_page=True)
   browser.close()
- print('Mobile browser passed: market load, provenance, saved study, failed refresh, CSV round-trip, chart-switch race, ChatGPT copy and clipboard fallback, and layout.')
+ print('Mobile browser passed: searchable multi-provider markets, tiny prices, forex, futures, timeframe changes, provenance, saved studies, CSV, request races, ChatGPT copy, and layout.')
 finally:
  server.terminate();server.wait(timeout=10);artifacts.cleanup()

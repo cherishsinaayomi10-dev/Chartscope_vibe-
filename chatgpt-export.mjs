@@ -4,6 +4,10 @@ export function buildChatGPTPrompt(context, question = '', indicators = null) {
   const data = {symbol: context.symbol, timeframe: context.timeframe, source: context.source};
   if (context.source === 'market') data.market = {
     provider: context.marketData?.provider,
+    providerSymbol: context.marketData?.providerSymbol,
+    instrument: context.marketData?.label,
+    delay: context.marketData?.delay,
+    aggregation: context.marketData?.aggregation,
     fetchedAt: context.marketData?.fetchedAt,
     lastClosedAt: context.marketData?.lastClosedAt,
     streaming: false,
