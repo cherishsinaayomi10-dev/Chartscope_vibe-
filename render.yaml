@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: chartscope
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
