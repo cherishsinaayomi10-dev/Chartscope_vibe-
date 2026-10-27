@@ -77,7 +77,7 @@ def indicators(bars):
             'macd': _compute_macd(close), 'bollinger': _compute_bollinger(close),
             'fingerprint': hashlib.sha256(json.dumps(bars, sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
             'first_time': bars[0]['time'], 'last_time': bars[-1]['time'],
-            'note': 'Calculated from your supplied candles. No market feed was fetched.'}
+            'note': 'Calculated from the displayed chart candles. Refresh market candles separately to update their prices.'}
 
 
 SYSTEM = ('You are a chart-research assistant. Discuss only the supplied evidence. '
