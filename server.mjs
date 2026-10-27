@@ -6,7 +6,7 @@ import {analyze,parseCSV,validateBars} from './analysis.mjs';
 import {callVibe} from './vibe.mjs';
 import {createMarketLoader} from './market.mjs';
 const loadMarket = createMarketLoader();
-const files={'/':['index.html','text/html'],'/workspace':['workspace.html','text/html'],'/app.js':['app.js','text/javascript'],'/app.css':['app.css','text/css'],'/vibe-ui.js':['vibe-ui.js','text/javascript'],'/mark.svg':['mark.svg','image/svg+xml']};
+const files={'/chatgpt-export.mjs':['chatgpt-export.mjs','text/javascript'],'/':['index.html','text/html'],'/workspace':['workspace.html','text/html'],'/app.js':['app.js','text/javascript'],'/app.css':['app.css','text/css'],'/vibe-ui.js':['vibe-ui.js','text/javascript'],'/mark.svg':['mark.svg','image/svg+xml']};
 async function readJSON(req,limit){let size=0;const chunks=[];for await(const c of req){size+=c.length;if(size>limit)throw Error('Input is too large.');chunks.push(c)}return JSON.parse(Buffer.concat(chunks).toString())}
 export function createServer({invokeVibe=callVibe,fetchMarket=loadMarket}={}){return http.createServer(async(req,res)=>{
  const json=(status,data)=>{if(res.destroyed)return;res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data))};

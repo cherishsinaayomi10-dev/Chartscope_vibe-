@@ -64,9 +64,22 @@ try:
   page.wait_for_function("!document.querySelector('#scan').disabled")
   assert page.evaluate('window.chartScopeContext.symbol')=='EURUSD'
   assert page.evaluate('window.chartScopeContext.bars[0].open')<2, 'Previous BTC scan overwrote the new EUR chart'
+  page.evaluate("()=>{navigator.clipboard.writeText=async text=>{window.testCopiedText=text}}")
+  page.locator('#copyChatGPT').click()
+  page.wait_for_function("document.querySelector('#chatGPTCopyStatus').textContent.startsWith('Copied.')")
+  assert page.evaluate('window.testCopiedText')==page.locator('#chatGPTPrompt').input_value()
+  assert 'EURUSD' in page.locator('#chatGPTPrompt').input_value()
+  assert page.locator('#chatGPTDialog a').get_attribute('href')=='https://chatgpt.com/'
+  page.locator('#chatGPTDialog [data-close]').click()
+  page.evaluate("()=>{navigator.clipboard.writeText=async()=>{throw Error('Clipboard blocked by test')}}")
+  page.locator('#copyChatGPT').click()
+  page.wait_for_function("document.querySelector('#chatGPTCopyStatus').textContent.startsWith('Select the text')")
+  assert 'Chart evidence:' in page.locator('#chatGPTPrompt').input_value()
+  assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+  page.locator('#chatGPTDialog [data-close]').click()
   assert not errors, errors
   page.screenshot(path=str(Path(artifacts.name)/'mobile.png'),full_page=True)
   browser.close()
- print('Mobile browser passed: market load, provenance, saved study, failed refresh, CSV round-trip, chart-switch race, and layout.')
+ print('Mobile browser passed: market load, provenance, saved study, failed refresh, CSV round-trip, chart-switch race, ChatGPT copy and clipboard fallback, and layout.')
 finally:
  server.terminate();server.wait(timeout=10);artifacts.cleanup()

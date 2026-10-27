@@ -27,6 +27,8 @@ Market adapter and mobile browser checks use explicit test responses. The deploy
 
 ## Optional AI setup
 
+For your existing ChatGPT account on a phone, use **Copy chart for ChatGPT** in the workspace. It copies the source, timestamps, latest 120 candles, question, and any already calculated Vibe indicators. Open ChatGPT using the dialog link and paste into your chat. Images must be attached separately. Clipboard restrictions show selectable text instead. No server sign-in, API key, or extra API subscription is required for this manual workflow. Replies appear in ChatGPT; automatic replies inside ChartScope still require the server connection below. Your ChatGPT account's normal limits apply.
+
 Chart tools work without an AI account. AI research and image analysis require a model connection on the server.
 
 For an API-key provider, open **Render → your service → Environment** and set:
